@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import tifffile
 import torch
 import torch.nn as nn
 
@@ -183,6 +184,7 @@ class load_data():
             
         if max_normalize:
             if final_dim == 1:
+                print(np.max(dataset_flat, axis=1).shape)
                 dataset_flat = dataset_flat / np.max(dataset_flat, axis=1)[:, np.newaxis]
             else:
                 dataset_flat = dataset_flat / np.max(dataset_flat, axis=(1,2))[:, np.newaxis, np.newaxis]
