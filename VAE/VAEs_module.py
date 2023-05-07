@@ -196,9 +196,9 @@ class load_data():
                 
         dataset_flat = dataset_flat.clip(min=min_val)
         print(np.min(dataset_flat), np.max(dataset_flat))
-        total_num = len(dataset_flat)
+        self.total_num = len(dataset_flat)
         self.dataset_flat = dataset_flat
-        self.ri = np.random.choice(total_num, total_num, replace=False)
+        self.ri = np.random.choice(self.total_num, self.total_num, replace=False)
 
         self.dataset_input = dataset_flat[self.ri]
         self.dataset_input = self.dataset_input.astype(np.float32)
@@ -256,18 +256,19 @@ class VAE2DCNN_decoder(nn.Module):
         
         self.z_dim = z_dim
         self.final_length = final_length
+        self.channels = channels
         
         self.init_decoder = nn.Linear(self.z_dim, self.final_length**2*channels[-1])
         
         dec_net = []
         for i in range(len(channels)-1, 0, -1):
             dec_net.append(nn.ConvTranspose2d(channels[i], channels[i-1], dec_kernels[i], dec_strides[i],
-                                              dec_paddings[i], output_padding=dec_outpad[i], bias=True))
+                                              dec_paddings[i], output_padding=dec_outpads[i], bias=True))
             dec_net.append(nn.BatchNorm2d(channels[i-1]))
             dec_net.append(nn.LeakyReLU(0.1))
             
         dec_net.append(nn.ConvTranspose2d(channels[0], 1, dec_kernels[0], dec_strides[0], 
-                                          dec_paddings[0], output_padding=dec_outpad[0], bias=True))
+                                          dec_paddings[0], output_padding=dec_outpads[0], bias=True))
         dec_net.append(nn.BatchNorm2d(1))
         dec_net.append(nn.LeakyReLU(0.1))
         
@@ -324,21 +325,23 @@ class VAEFCNN_encoder(nn.Module):
     
     
 class VAEFCNN_decoder(nn.Module):
-    def __init__(self, z_dim, h_dim, n_dim):
+    def __init__(self, z_dim, h_dim, in_dim):
         super(VAEFCNN_decoder, self).__init__()
         
         self.z_dim = z_dim
+        self.h_dim = h_dim
+        self.in_dim = in_dim
         
         dec_net = []
         dec_net.append(nn.Linear(z_dim, self.h_dim[-1]))
-        dnc_net.append(nn.BatchNorm1d(self.h_dim[-1]))
+        dec_net.append(nn.BatchNorm1d(self.h_dim[-1]))
         dec_net.append(nn.LeakyReLU(0.1))
         for i in range(len(h_dim), 1, -1):
             dec_net.append(nn.Linear(self.h_dim[i-1], self.h_dim[i-2]))
             dnc_net.append(nn.BatchNorm1d(self.h_dim[i-2]))
             dec_net.append(nn.LeakyReLU(0.1))
         dec_net.append(nn.Linear(self.h_dim[0], self.in_dim))
-        dec_net.append(nn.Tanh())
+        dec_net.append(nn.Sigmoid())
         
         self.decoder = nn.Sequential(*dec_net)
         
@@ -600,7 +603,7 @@ class ivVAEFCNN_decoder(nn.Module):
         init_dec = init_dec.view(z.size(0)*self.n_coord, -1)
         output = self.decoder(init_dec.contiguous())
         
-        return output
+        return output.view(z.size(0), self.n_coord)
     
     
 def data_load_3d(adr, crop=None, rescale=True, DM_file=True):
