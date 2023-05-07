@@ -163,7 +163,7 @@ class load_data():
                     if final_dim == 1:
                         dataset.append(flattened)
                     else:
-                        dataset.append(flattened.reshape(self.data_shape[i][0], self.data_shape[i][1], self.w_size, self.w_size))
+                        dataset.append(flattened.reshape(self.data_shape[i][0], self.data_shape[i][1], self.w_size*2, self.w_size*2))
 
                 self.s_length = (w_size*2)**2
                 
@@ -172,7 +172,7 @@ class load_data():
                 if final_dim == 1:
                     dataset_flat.extend(dataset[i].reshape(-1, self.s_length))
                 else:
-                    dataset_flat.extend(dataset[i].reshape(-1, self.w_size, self.w_size))
+                    dataset_flat.extend(dataset[i].reshape(-1, self.w_size*2, self.w_size*2))
                     
             dataset_flat = np.asarray(dataset_flat)
             print(dataset_flat.shape)
