@@ -1,3 +1,4 @@
+import hyperspy.api as hys
 import numpy as np
 import matplotlib.pyplot as plt
 import tifffile
@@ -338,7 +339,7 @@ class VAEFCNN_decoder(nn.Module):
         dec_net.append(nn.LeakyReLU(0.1))
         for i in range(len(h_dim), 1, -1):
             dec_net.append(nn.Linear(self.h_dim[i-1], self.h_dim[i-2]))
-            dnc_net.append(nn.BatchNorm1d(self.h_dim[i-2]))
+            dec_net.append(nn.BatchNorm1d(self.h_dim[i-2]))
             dec_net.append(nn.LeakyReLU(0.1))
         dec_net.append(nn.Linear(self.h_dim[0], self.in_dim))
         dec_net.append(nn.Sigmoid())
