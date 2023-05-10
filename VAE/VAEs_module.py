@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import tifffile
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 class load_data():
     def __init__(self, adr, dat_dim, dat_unit, cr_range=None, dat_scale=1, rescale=True, DM_file=False):
@@ -436,7 +437,7 @@ class ivVAEFCNN_encoder(nn.Module):
             
         if self.trans_check:
             
-            trans_z = z[:, 2:]
+            trans_z = z[:, :2]
             z = z[:, 2:]
             
             coord = self.translation(coord, trans_z)
@@ -606,7 +607,69 @@ class ivVAEFCNN_decoder(nn.Module):
         
         return output.view(z.size(0), self.n_coord)
     
+
+def reconstruction_loss(out, tar, mean=False, loss_fn="BCE"):
+
+    if mean:
+        reduce = "mean"
+    else:
+        reduce = "sum"
+
+    if loss_fn == "BCE":
+        return F.binary_cross_entropy(out, tar, reduction=reduce)
     
+    elif loss_fn == "MSE":
+        return F.mse_loss(out, tar, reduction=reduce)
+    
+
+def VAE_KLD(mu, logvar, mean=False, mode="normal", beta=4.0, gamma=1000.0, C_max=25, C_stop_iter=1E5, glob_iter=0):
+    if mean:
+        kld = -0.5*torch.mean(1+logvar-mu**2-logvar.exp())
+
+    else:
+        kld = -0.5*torch.sum(1+logvar-mu**2-logvar.exp())
+
+    if mode == "normal":
+        return kld
+    
+    elif mode == "beta":
+        return beta * kld
+    
+    elif mode == "gamma":
+        C = torch.clamp(C_max/C_stop_iter*glob_iter, 0, C_max.data[0])
+        return gamma*(kld-C).abs()
+    else:
+        print("invalid mode option!")
+        return
+
+def ivVAE_KLD(mu, logvar, rot_mu, rot_logvar, ang_std, 
+              mean=False, mode="normal", beta=4.0, 
+              gamma=1000.0, C_max=25, C_stop_iter=1E5, glob_iter=0):
+    
+    if mean:
+        kld = -0.5*torch.mean(1+logvar-mu**2-logvar.exp())
+        rot_kld = torch.mean(-rot_logvar + np.log(ang_std) + (torch.exp(rot_logvar)**2 + 
+                                                              rot_mu**2)/2/ang_std**2 - 0.5)
+
+    else:
+        kld = -0.5*torch.sum(1+logvar-mu**2-logvar.exp())
+        rot_kld = torch.sum(-rot_logvar + np.log(ang_std) + (torch.exp(rot_logvar)**2 + 
+                                                              rot_mu**2)/2/ang_std**2 - 0.5)
+
+    if mode == "normal":
+        return kld + rot_kld
+    
+    elif mode == "beta":
+        return beta * (kld+rot_kld)
+    
+    elif mode == "gamma":
+        C = torch.clamp(C_max/C_stop_iter*glob_iter, 0, C_max.data[0])
+        return gamma*((kld-C).abs() + (rot_kld-C).abs())
+    else:
+        print("invalid mode option!")
+        return
+
+
 def data_load_3d(adr, crop=None, rescale=True, DM_file=True):
     """
     load a spectrum image
