@@ -440,13 +440,19 @@ class ivVAEFCNN_encoder(nn.Module):
             coord = self.rotation(coord, rot_z)
             
         if self.trans_check:
+
+            trans_mu = mu[:, :2]
+            mu = mu[:, 2:]
             
+            trans_logvar = logvar[:, :2]
+            logvar = logvar[:, 2:]
+
             trans_z = z[:, :2]
             z = z[:, 2:]
             
             coord = self.translation(coord, trans_z)
         
-        return coord, mu, logvar, z, rot_mu, rot_logvar, rot_z, trans_z
+        return coord, mu, logvar, z, rot_mu, rot_logvar, rot_z, trans_mu, trans_logvar, trans_z
     
     
 class ivVAE2DCNN_encoder(nn.Module):
@@ -549,12 +555,18 @@ class ivVAE2DCNN_encoder(nn.Module):
             
         if self.trans_check:
 
+            trans_mu = mu[:, :2]
+            mu = mu[:, 2:]
+            
+            trans_logvar = logvar[:, :2]
+            logvar = logvar[:, 2:]
+
             trans_z = z[:, :2]
             z = z[:, 2:]
             
             coord = self.translation(coord, trans_z)
         
-        return coord, mu, logvar, z, rot_mu, rot_logvar, rot_z, trans_z
+        return coord, mu, logvar, z, rot_mu, rot_logvar, rot_z, trans_mu, trans_logvar, trans_z
     
 
 class ivVAEFCNN_decoder(nn.Module):   
