@@ -207,7 +207,7 @@ class load_data():
 
 
 class VAE2DCNN_encoder(nn.Module):
-    def __init__(self, final_length, channels, kernels, strides, paddings, z_dim):
+    def __init__(self, final_length, channels, kernels, strides, paddings, pooling, z_dim):
         super(VAE2DCNN_encoder, self).__init__()
         
         self.z_dim = z_dim
@@ -218,12 +218,16 @@ class VAE2DCNN_encoder(nn.Module):
         enc_net.append(nn.Conv2d(1, channels[0], kernels[0], stride=strides[0], 
                                  padding=paddings[0], bias=True))
         enc_net.append(nn.BatchNorm2d(channels[0]))
-        enc_net.append(nn.LeakyReLU(0.1))
+        enc_net.append(nn.Tanh())
+        if pooling[0] != 1:
+            enc_net.append(nn.AvgPool2d(pooling[0]))
         for i in range(1, len(channels)):
             enc_net.append(nn.Conv2d(channels[i-1], channels[i], kernels[i], stride=strides[i],
                                      padding=paddings[i], bias=True))
             enc_net.append(nn.BatchNorm2d(channels[i]))
-            enc_net.append(nn.LeakyReLU(0.1))
+            enc_net.append(nn.Tanh())
+            if pooling[i] != 1:
+                enc_net.append(nn.AvgPool2d(pooling[i]))
             
         enc_net.append(nn.Flatten())
         enc_net.append(nn.Linear(self.final_length**2*channels[-1], 2*self.z_dim))
@@ -267,12 +271,12 @@ class VAE2DCNN_decoder(nn.Module):
             dec_net.append(nn.ConvTranspose2d(channels[i], channels[i-1], dec_kernels[i], dec_strides[i],
                                               dec_paddings[i], output_padding=dec_outpads[i], bias=True))
             dec_net.append(nn.BatchNorm2d(channels[i-1]))
-            dec_net.append(nn.LeakyReLU(0.1))
+            dec_net.append(nn.Tanh())
             
         dec_net.append(nn.ConvTranspose2d(channels[0], 1, dec_kernels[0], dec_strides[0], 
                                           dec_paddings[0], output_padding=dec_outpads[0], bias=True))
         dec_net.append(nn.BatchNorm2d(1))
-        dec_net.append(nn.LeakyReLU(0.1))
+        dec_net.append(nn.Tanh())
         
         dec_net.append(nn.Conv2d(1, 1, f_kernel, bias=True))
         dec_net.append(nn.Sigmoid())
@@ -296,10 +300,10 @@ class VAEFCNN_encoder(nn.Module):
         
         enc_net = []
         enc_net.append(nn.Linear(self.in_dim, self.h_dim[0]))
-        enc_net.append(nn.LeakyReLU(0.1))
+        enc_net.append(nn.Tanh())
         for i in range(1, len(h_dim)):
             enc_net.append(nn.Linear(self.h_dim[i-1], self.h_dim[i]))
-            enc_net.append(nn.LeakyReLU(0.1))
+            enc_net.append(nn.Tanh())
         enc_net.append(nn.Linear(self.h_dim[-1], 2*z_dim))
         
         self.encoder = nn.Sequential(*enc_net)
@@ -337,11 +341,11 @@ class VAEFCNN_decoder(nn.Module):
         dec_net = []
         dec_net.append(nn.Linear(z_dim, self.h_dim[-1]))
         dec_net.append(nn.BatchNorm1d(self.h_dim[-1]))
-        dec_net.append(nn.LeakyReLU(0.1))
+        dec_net.append(nn.Tanh())
         for i in range(len(h_dim), 1, -1):
             dec_net.append(nn.Linear(self.h_dim[i-1], self.h_dim[i-2]))
             dec_net.append(nn.BatchNorm1d(self.h_dim[i-2]))
-            dec_net.append(nn.LeakyReLU(0.1))
+            dec_net.append(nn.Tanh())
         dec_net.append(nn.Linear(self.h_dim[0], self.in_dim))
         dec_net.append(nn.Sigmoid())
         
@@ -373,10 +377,10 @@ class ivVAEFCNN_encoder(nn.Module):
         
         enc_net = []
         enc_net.append(nn.Linear(in_dim, h_dim[0]))
-        enc_net.append(nn.LeakyReLU(0.1))
+        enc_net.append(nn.Tanh())
         for i in range(1, len(h_dim)):
             enc_net.append(nn.Linear(h_dim[i-1], h_dim[i]))
-            enc_net.append(nn.LeakyReLU(0.1))
+            enc_net.append(nn.Tanh())
         enc_net.append(nn.Linear(h_dim[-1], 2*self.z_dim))
         
         self.encoder = nn.Sequential(*enc_net)
@@ -631,10 +635,8 @@ def VAE_KLD(mu, logvar, mean=False, mode="normal", beta=4.0, gamma=1000.0, C_max
 
     if mode == "normal":
         return kld
-    
     elif mode == "beta":
         return beta * kld
-    
     elif mode == "gamma":
         C = torch.clamp(C_max/C_stop_iter*glob_iter, 0, C_max.data[0])
         return gamma*(kld-C).abs()
@@ -658,10 +660,8 @@ def ivVAE_KLD(mu, logvar, rot_mu, rot_logvar, ang_std,
 
     if mode == "normal":
         return kld + rot_kld
-    
     elif mode == "beta":
-        return beta * (kld+rot_kld)
-    
+        return beta * (kld+rot_kld)  
     elif mode == "gamma":
         C = torch.clamp(C_max/C_stop_iter*glob_iter, 0, C_max.data[0])
         return gamma*((kld-C).abs() + (rot_kld-C).abs())
