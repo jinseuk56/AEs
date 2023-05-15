@@ -626,14 +626,14 @@ class ivVAEFCNN_decoder(nn.Module):
 
 class linFE_decoder(nn.Module):
     def __init__(self, z_dim, in_dim):
-        super(VAEFCNN_decoder, self).__init__()
+        super(linFE_decoder, self).__init__()
         
         self.z_dim = z_dim
         self.in_dim = in_dim
         
         self.decoder = nn.Sequential(
             nn.Linear(self.z_dim, self.in_dim, bias=False),
-            nn.Hardsigmoid(),
+            nn.Sigmoid(),
         )
         
     def forward(self, z):       
