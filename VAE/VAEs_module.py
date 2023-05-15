@@ -624,6 +624,24 @@ class ivVAEFCNN_decoder(nn.Module):
         return output.view(z.size(0), self.n_coord)
     
 
+class linFE_decoder(nn.Module):
+    def __init__(self, z_dim, in_dim):
+        super(VAEFCNN_decoder, self).__init__()
+        
+        self.z_dim = z_dim
+        self.in_dim = in_dim
+        
+        self.decoder = nn.Sequential(
+            nn.Linear(self.z_dim, self.in_dim, bias=False),
+            nn.Hardsigmoid(),
+        )
+        
+    def forward(self, z):       
+        
+        return self.decoder(z)
+
+    
+
 def reconstruction_loss(out, tar, mean=False, loss_fn="BCE"):
 
     if mean:
