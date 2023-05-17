@@ -757,6 +757,14 @@ def data_load_4d(adr, rescale=False):
             tmp = tmp / np.max(tmp)
         tmp = tmp.clip(min=0.0)
         print(tmp.shape)
+        if len(tmp.shape) == 3:
+            try:
+                tmp = tmp.reshape(int(tmp.shape[0]**(1/2)), int(tmp.shape[0]**(1/2)), tmp.shape[1], tmp.shape[2])
+                print("The scanning shape is automatically corrected")
+            except:
+                print("The input data is not 4-dimensional")
+                print("Please confirm that all options are correct")
+            
         shape.append(list(tmp.shape[:2]))
         storage.append(tmp)
     
