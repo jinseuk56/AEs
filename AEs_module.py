@@ -206,76 +206,74 @@ class load_data():
         self.dataset_input = self.dataset_input.astype(np.float32)
 
 
-class CAE1D_linFE(nn.Module):
-    def __init__(self, input_size, encoded_dimension, channels, kernels):
-        super(CAE1D_linFE, self).__init__()
+class CAE1D_encoder(nn.Module):
+    def __init__(self, input_size, channels, kernels, poolings):
+        super(CAE1D_encoder, self).__init__()
 
         self.input_size = input_size
-        self.encoded_dimension = encoded_dimension
-        
-        self.cnn_encoder = nn.Sequential(
-            nn.Conv1d(1, channels[0], kernels[0], bias=True),
-            nn.BatchNorm1d(channels[0]),
-            nn.ReLU(),
-            nn.AvgPool1d(2),
-            nn.Conv1d(channels[0], channels[1], kernels[1], bias=True),
-            nn.BatchNorm1d(channels[1]),
-            nn.ReLU(),
-            nn.AvgPool1d(2),
-            nn.Conv1d(channels[1], channels[2], kernels[2], bias=True),
-            nn.BatchNorm1d(channels[2]),
-            nn.ReLU(),
-            nn.AvgPool1d(2),
-            nn.Conv1d(channels[2], channels[3], kernels[3], bias=True),
-            nn.BatchNorm1d(channels[3]),
-            nn.ReLU(),
-            nn.AvgPool1d(2),
-            nn.Flatten(),
-        )
-        
-        self.decoder = nn.Sequential(
-            nn.Linear(self.encoded_dimension[1], self.input_size, bias=False),
-            nn.Hardsigmoid(),
-        )
+
+        enc_net = []
+        enc_net.append(nn.Conv1d(1, channels[0], kernels[0], bias=True))
+        enc_net.append(nn.BatchNorm1d(channels[0]))
+        enc_net.append(nn.ReLU())
+        if poolings[0] != 1:
+            enc_net.append(nn.AvgPool1d(poolings[0]))
+        for i in range(1, len(channels)):
+            enc_net.append(nn.Conv1d(channels[i-1], channels[i], kernels[i], bias=True))
+            enc_net.append(nn.BatchNorm1d(channels[i]))
+            enc_net.append(nn.ReLU())
+            if poolings[i] != 1:
+                enc_net.append(nn.AvgPool1d(poolings[i]))
+
+        enc_net.append(nn.Flatten())
+        self.encoder = nn.Sequential(*enc_net)
+
     def forward(self, x):
         x = x.view(-1, 1, self.input_size)
-        encoded = self.cnn_encoder(x)
-        decoded = self.decoder(encoded)
-        return encoded, decoded
+        return self.encoder(x)
 
 
-class CAE2D_linFE(nn.Module):
-    def __init__(self, input_size, encoded_dimension, channels, kernels, poolings):
-        super(CAE2D_linFE, self).__init__()
+class linFE_decoder(nn.Module):
+    def __init__(self, z_dim, in_dim):
+        super(linFE_decoder, self).__init__()
+        
+        self.z_dim = z_dim
+        self.in_dim = in_dim
+        
+        self.decoder = nn.Sequential(
+            nn.Linear(self.z_dim, self.in_dim, bias=False),
+            nn.Hardsigmoid(),
+        )
+        
+    def forward(self, z):       
+        return self.decoder(z)
+
+
+class CAE2D_encoder(nn.Module):
+    def __init__(self, input_size, channels, kernels, poolings):
+        super(CAE2D_encoder, self).__init__()
 
         self.input_size = input_size
-        self.encoded_dimension = encoded_dimension
         
         enc_net = []
         enc_net.append(nn.Conv2d(1, channels[0], kernels[0], bias=True))
         enc_net.append(nn.BatchNorm2d(channels[0]))
-        enc_net.append(nn.LeakyReLU(0.1))
-        enc_net.append(nn.AvgPool2d(poolings[0]))
+        enc_net.append(nn.ReLU())
+        if poolings[0] != 1:
+            enc_net.append(nn.AvgPool2d(poolings[0]))
         for i in range(1, len(channels)):
             enc_net.append(nn.Conv2d(channels[i-1], channels[i], kernels[i], bias=True))
             enc_net.append(nn.BatchNorm2d(channels[i]))
-            enc_net.append(nn.LeakyReLU(0.1))
-            enc_net.append(nn.AvgPool2d(poolings[i]))
+            enc_net.append(nn.ReLU())
+            if poolings[i] != 1:
+                enc_net.append(nn.AvgPool2d(poolings[i]))
             
         enc_net.append(nn.Flatten())
         self.encoder = nn.Sequential(*enc_net)
         
-        self.decoder = nn.Sequential(
-            nn.Linear(self.encoded_dimension, (2*self.input_size)**2, bias=False),
-            nn.Sigmoid(),
-        )
-        
     def forward(self, x):
         x = x.view(-1, 1, self.input_size*2, self.input_size*2)
-        encoded = self.encoder(x)
-        decoded = self.decoder(encoded)
-        return encoded, decoded
-
+        return self.encoder(x)
 
 
 class VAE2DCNN_encoder(nn.Module):
@@ -694,25 +692,7 @@ class ivVAEFCNN_decoder(nn.Module):
         output = self.decoder(init_dec.contiguous())
         
         return output.view(z.size(0), self.n_coord)
-    
-
-class linFE_decoder(nn.Module):
-    def __init__(self, z_dim, in_dim):
-        super(linFE_decoder, self).__init__()
-        
-        self.z_dim = z_dim
-        self.in_dim = in_dim
-        
-        self.decoder = nn.Sequential(
-            nn.Linear(self.z_dim, self.in_dim, bias=False),
-            nn.Sigmoid(),
-        )
-        
-    def forward(self, z):       
-        
-        return self.decoder(z)
-
-    
+      
 
 def reconstruction_loss(out, tar, mean=False, loss_fn="BCE"):
 
