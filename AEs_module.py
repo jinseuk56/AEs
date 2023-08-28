@@ -250,19 +250,21 @@ class linFE_decoder(nn.Module):
 
 
 class CAE2D_encoder(nn.Module):
-    def __init__(self, input_size, channels, kernels, poolings):
+    def __init__(self, input_size, channels, kernels, strides, paddings, poolings):
         super(CAE2D_encoder, self).__init__()
 
         self.input_size = input_size
         
         enc_net = []
-        enc_net.append(nn.Conv2d(1, channels[0], kernels[0], bias=True))
+        enc_net.append(nn.Conv2d(1, channels[0], kernels[0], stride=strides[0], 
+                                 padding=paddings[0], bias=True))
         enc_net.append(nn.BatchNorm2d(channels[0]))
         enc_net.append(nn.ReLU())
         if poolings[0] != 1:
             enc_net.append(nn.AvgPool2d(poolings[0]))
         for i in range(1, len(channels)):
-            enc_net.append(nn.Conv2d(channels[i-1], channels[i], kernels[i], bias=True))
+            enc_net.append(nn.Conv2d(channels[i-1], channels[i], kernels[i], stride=strides[i],
+                                     padding=paddings[i], bias=True))
             enc_net.append(nn.BatchNorm2d(channels[i]))
             enc_net.append(nn.ReLU())
             if poolings[i] != 1:
