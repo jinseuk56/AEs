@@ -96,7 +96,7 @@ class load_data():
                     ax.axis("off")
                     plt.show()
                     
-    def make_input(self, min_val=0.0, max_normalize=True, rescale_0to1=False, log_scale=False, radial_flat=True, w_size=0, radial_range=None, final_dim=2):
+    def make_input(self, min_val=0.0, max_normalize=True, rescale_0to1=False, log_scale=False, radial_flat=True, w_size=0, radial_range=None, final_dim=1):
 
         dataset_flat = []
         if self.dat_dim == 3:
@@ -127,54 +127,43 @@ class load_data():
 
                 self.s_length = len(self.k_indx)
                 
-                if final_dim == 1:
 
-                    for i in range(self.num_img):
-                        flattened = circle_flatten(self.data_storage[i], radial_range, self.center_pos[i])
+                for i in range(self.num_img):
+                    flattened = circle_flatten(self.data_storage[i], radial_range, self.center_pos[i])
 
-                        tmp = np.zeros((radial_range[1]*2, radial_range[1]*2))
-                        tmp[self.k_indy, self.k_indx] = np.sum(flattened, axis=(0, 1))
+                    tmp = np.zeros((radial_range[1]*2, radial_range[1]*2))
+                    tmp[self.k_indy, self.k_indx] = np.sum(flattened, axis=(0, 1))
 
-                        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-                        ax.imshow(tmp, cmap="viridis")
-                        ax.axis("off")
-                        fig.tight_layout()
-                        plt.show()
+                    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
+                    ax.imshow(tmp, cmap="viridis")
+                    ax.axis("off")
+                    fig.tight_layout()
+                    plt.show()
 
-                        dataset.append(flattened)
-                        
-                else:
-                    for i in range(self.num_img):
-                        flattened = circle_flatten(self.data_storage[i], radial_range, self.center_pos[i])
-
-                        tmp = np.zeros((radial_range[1]*2, radial_range[1]*2))
-                        tmp[self.k_indy, self.k_indx] = np.sum(flattened, axis=(0, 1))
-
-                        fig, ax = plt.subplots(1, 1, figsize=(5, 5))
-                        ax.imshow(tmp, cmap="viridis")
-                        ax.axis("off")
-                        fig.tight_layout()
-                        plt.show()
-
-                        dataset.append(flattened)
+                    dataset.append(flattened)
                     
+                for i in range(self.num_img):
+                    print(dataset[i].shape)
+                    dataset_flat.extend(dataset[i].reshape(-1, self.s_length))
                 
+                    
             else:
                 for i in range(self.num_img):
                     flattened = flattening(self.data_storage[i], flat_option="box", crop_dist=w_size, c_pos=self.center_pos[i])
                     if final_dim == 1:
                         dataset.append(flattened)
-                    else:
+                    elif final_dim == 2:
                         dataset.append(flattened.reshape(self.data_shape[i][0], self.data_shape[i][1], self.w_size*2, self.w_size*2))
-
+                    else:
+                        print("Warning! 'final_dim' must be 1 or 2")
                 self.s_length = (w_size*2)**2
                 
-            for i in range(self.num_img):
-                print(dataset[i].shape)
-                if final_dim == 1:
-                    dataset_flat.extend(dataset[i].reshape(-1, self.s_length))
-                else:
-                    dataset_flat.extend(dataset[i].reshape(-1, self.w_size*2, self.w_size*2))
+                for i in range(self.num_img):
+                    print(dataset[i].shape)
+                    if final_dim == 1:
+                        dataset_flat.extend(dataset[i].reshape(-1, self.s_length))
+                    else:
+                        dataset_flat.extend(dataset[i].reshape(-1, self.w_size*2, self.w_size*2))
                     
             dataset_flat = np.asarray(dataset_flat)
             print(dataset_flat.shape)
